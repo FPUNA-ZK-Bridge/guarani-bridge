@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>GuaraniToken • Local Bridge Demo</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+
+  <!-- Ethers v6 (UMD)  → no CORS issues -->
+  <script src="https://unpkg.com/ethers@6.11.1/dist/ethers.umd.min.js"></script>
+
+  <link rel="preconnect" href="https://fonts.gstatic.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --primary: #6200ee;
+      --primary-dark: #3700b3;
+      --bg: #fafafa;
+      --surface: #fff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: Roboto, sans-serif; background: var(--bg); color:#222;
+      display:flex; flex-direction:column; align-items:center;
+    }
+    h1 { font-size:1.7rem; font-weight:400; margin:1.3rem 0 .5rem; color:var(--primary); }
+    .card {
+      width:100%; max-width:420px; background:var(--surface); border-radius:8px;
+      box-shadow:0 2px 8px rgba(0,0,0,.08); padding:24px; margin:1rem;
+    }
+    label { display:block; font-size:.85rem; margin-bottom:4px; opacity:.8; }
+    input {
+      width:100%; padding:10px 14px; border:1px solid #ccc; border-radius:4px;
+      font-size:.95rem; margin-bottom:16px; transition:border-color .2s;
+    }
+    input:focus { outline:none; border-color:var(--primary); }
+    button {
+      display:block; width:100%; background:var(--primary); color:#fff;
+      border:none; border-radius:4px; padding:12px; font-size:.9rem;letter-spacing:.5px;
+      cursor:pointer; transition:background .2s,box-shadow .2s;
+    }
+    button:hover { background:var(--primary-dark); box-shadow:0 4px 10px rgba(0,0,0,.18); }
+    pre { background:#111; color:#0f0; border-radius:4px; padding:12px; height:160px; overflow:auto; white-space:pre-wrap; font-family:monospace; font-size:.77rem; margin-top:20px; }
+  </style>
+</head>
+<body>
+  <h1>GuaraniToken Bridge (Local)</h1>
+  <div class="card">
+    <label for="dest">Destino (L2 address)</label>
+    <input id="dest" placeholder="0x…" />
+
+    <label for="amt">Monto (GUA)</label>
+    <input id="amt" type="number" value="10" step="0.0001" />
+
+    <button id="btn-bridge">BRIDGE →</button>
+
+    <pre id="log"></pre>
+  </div>
+
+<script>
+(async () => {
+  // ───────── Config   (rellena tras tu deploy) ──────────
+  const CHAIN_L1 = "0x7a69";   // 31337
+  const TOKEN_L1  = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // mejora : traer del deploy,json
+  const SENDER_L1 = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+  // ──────────────────────────────────────────────────────
+
+  if (!window.ethereum) return alert("Instala MetaMask");
+
+  const log = (m) => {
+    const el = document.getElementById("log");
+    el.textContent += m + "\n"; el.scrollTop = el.scrollHeight;
+  };
+
+  /* auto-connect */
+  await ethereum.request({ method: "eth_requestAccounts" });
+  const provider = new ethers.BrowserProvider(ethereum);
+  const signer   = await provider.getSigner();
+  const { chainId } = await provider.getNetwork();
+  log(`Connected ${signer.address}  (chainId ${chainId})`);
+
+    /* switch helper */
+  const switchTo = async (hexId) => {
+    const want = BigInt(parseInt(hexId, 16));     // 31337n
+    const now  = (await provider.getNetwork()).chainId; // BigInt
+    if (now !== want) {
+      try { await ethereum.request({ method:"wallet_switchEthereumChain", params:[{ chainId:hexId }] }); }
+      catch (e) { log("⚠️  switch chain rejected"); throw e; }
+    }
+  };
+
+  const abiToken  = ["function approve(address,uint256) external", "function allowance(address,address) view returns(uint256)"];
+  const abiSender = ["function lock(address,uint256)", "function nonce() view returns(uint256)"];
+
+  const token  = new ethers.Contract(TOKEN_L1 , abiToken , signer);
+  const sender = new ethers.Contract(SENDER_L1, abiSender, signer);
+
+  document.getElementById("btn-bridge").onclick = async () => {
+    try {
+      console.log('escuchando');
+      await switchTo(CHAIN_L1);
+
+      const dest   = document.getElementById("dest").value.trim();
+      const amount = ethers.parseUnits(document.getElementById("amt").value || "0", 18);
+      if (!ethers.isAddress(dest)) return alert("Dirección destino inválida");
+
+      /* approve if needed */
+      const allow = await token.allowance(signer.address, SENDER_L1);
+      if (allow < amount) {
+        log("approve…");
+        const tx = await token.approve(SENDER_L1, amount);
+        await tx.wait(); log("approve ok");
+      }
+
+      /* lock */
+      log("lock…");
+      const tx2 = await sender.lock(dest, amount);
+      await tx2.wait();
+      const idBN   = await sender.nonce();
+      const lockId = idBN - 1n; // BigInt math OK
+      log(`✅ Locked id ${lockId.toString()}, amount ${ethers.formatUnits(amount,18)} GUA`);
+      log("🔄 Espera que el relayer acuñe en L2…");
+    } catch (e) {
+      console.log("HAY UN ERROR EN EL RELAYER")
+      console.error(e);
+      log("❌ " + (e?.info?.error?.message || e.message));
+      log("❌ " + (e?.info?.error?.message || e.message));
+    }
+  };
+})();
+</script>
+</body>
+</html>
