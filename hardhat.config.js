@@ -13,6 +13,7 @@ module.exports = {
         initialIndex: 0,
         count: 20,
       },
+      mining: { auto: true, interval: 100000 },
     },
     localN2: {
       url: "http://127.0.0.1:9545",
