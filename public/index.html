@@ -74,31 +74,58 @@
 
   /* auto-connect */
   await ethereum.request({ method: "eth_requestAccounts" });
-  const provider = new ethers.BrowserProvider(ethereum);
-  const signer   = await provider.getSigner();
+  let provider = new ethers.BrowserProvider(ethereum);
+  let signer   = await provider.getSigner();
   const { chainId } = await provider.getNetwork();
-  log(`Connected ${signer.address}  (chainId ${chainId})`);
+  const userAddress = await signer.getAddress();
+  log(`Connected ${userAddress}  (chainId ${chainId})`);
+  
+  // Refresh the page on chain changes to avoid stale providers/signers
+  if (ethereum && typeof ethereum.on === "function") {
+    ethereum.on("chainChanged", () => window.location.reload());
+  }
 
     /* switch helper */
   const switchTo = async (hexId) => {
     const want = BigInt(parseInt(hexId, 16));     // 31337n
     const now  = (await provider.getNetwork()).chainId; // BigInt
     if (now !== want) {
-      try { await ethereum.request({ method:"wallet_switchEthereumChain", params:[{ chainId:hexId }] }); }
-      catch (e) { log("⚠️  switch chain rejected"); throw e; }
+      try {
+        await ethereum.request({ method:"wallet_switchEthereumChain", params:[{ chainId:hexId }] });
+      } catch (e) {
+        // If the chain is not added, add it and retry
+        if (e && (e.code === 4902 || e.code === "4902")) {
+          await ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: hexId,
+              chainName: "Hardhat Local",
+              nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+              rpcUrls: ["http://127.0.0.1:8545"],
+            }],
+          });
+          await ethereum.request({ method:"wallet_switchEthereumChain", params:[{ chainId:hexId }] });
+        } else {
+          log("⚠️  switch chain rejected");
+          throw e;
+        }
+      }
     }
   };
 
   const abiToken  = ["function approve(address,uint256) external", "function allowance(address,address) view returns(uint256)"];
   const abiSender = ["function lock(address,uint256)", "function nonce() view returns(uint256)"];
 
-  const token  = new ethers.Contract(TOKEN_L1 , abiToken , signer);
-  const sender = new ethers.Contract(SENDER_L1, abiSender, signer);
+  // Contracts are instantiated after ensuring we are on the correct network
 
   document.getElementById("btn-bridge").onclick = async () => {
     try {
-      console.log('escuchando');
       await switchTo(CHAIN_L1);
+      // Recreate provider, signer, and contracts after switching network
+      provider = new ethers.BrowserProvider(ethereum);
+      signer   = await provider.getSigner();
+      const token  = new ethers.Contract(TOKEN_L1 , abiToken , signer);
+      const sender = new ethers.Contract(SENDER_L1, abiSender, signer);
 
       const dest   = document.getElementById("dest").value.trim();
       const amount = ethers.parseUnits(document.getElementById("amt").value || "0", 18);
@@ -121,9 +148,7 @@
       log(`✅ Locked id ${lockId.toString()}, amount ${ethers.formatUnits(amount,18)} GUA`);
       log("🔄 Espera que el relayer acuñe en L2…");
     } catch (e) {
-      console.log("HAY UN ERROR EN EL RELAYER")
       console.error(e);
-      log("❌ " + (e?.info?.error?.message || e.message));
       log("❌ " + (e?.info?.error?.message || e.message));
     }
   };
