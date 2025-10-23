@@ -72,6 +72,39 @@
     el.textContent += m + "\n"; el.scrollTop = el.scrollHeight;
   };
 
+  // WebSocket connection for real-time relayer logs
+  let ws = null;
+  const connectWebSocket = () => {
+    try {
+      ws = new WebSocket('ws://localhost:8080');
+      
+      ws.onopen = () => {
+        log('📡 Conectado al relayer - recibiendo logs en tiempo real');
+      };
+      
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === 'log') {
+          log(`[${new Date(data.timestamp).toLocaleTimeString()}] ${data.message}`);
+        }
+      };
+      
+      ws.onclose = () => {
+        log('📡 Conexión con relayer perdida - intentando reconectar...');
+        setTimeout(connectWebSocket, 3000);
+      };
+      
+      ws.onerror = (error) => {
+        log('📡 Error de conexión WebSocket: ' + error.message);
+      };
+    } catch (error) {
+      log('📡 No se pudo conectar al relayer: ' + error.message);
+    }
+  };
+
+  // Connect to WebSocket when page loads
+  connectWebSocket();
+
   /* auto-connect */
   await ethereum.request({ method: "eth_requestAccounts" });
   const provider = new ethers.BrowserProvider(ethereum);
