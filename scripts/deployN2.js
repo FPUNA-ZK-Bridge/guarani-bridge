@@ -7,7 +7,7 @@ async function main() {
   // signer[0] = deployer  ·  signer[1] = usaremos como relayer por defecto
   const [deployer, signer1] = await hre.ethers.getSigners();
 
-  // 1️⃣  Usa el ENV si existe; si no, toma la cuenta[1] que expone Anvil
+  // 1️⃣ Toma la cuenta[1] que expone Anvil
   const relayerAddr = getRelayer().address;
 
   // 🔧 FIX: Usa signer1 como deployer en L2 para generar addresses diferentes

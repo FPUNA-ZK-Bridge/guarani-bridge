@@ -1,6 +1,7 @@
 {
   "name": "guarani-bridge",
   "version": "1.0.0",
+  "type": "module",
   "private": true,
   "scripts": {
     "node:n1": "hardhat node --port 8545",
@@ -23,7 +24,7 @@
   },
   "dependencies": {
     "@openzeppelin/contracts": "^5.0.2",
-    "ethers": "^6.11.1",
+    "ethers": "^6.15.0",
     "dotenv": "^16.4.1"
   }
 }

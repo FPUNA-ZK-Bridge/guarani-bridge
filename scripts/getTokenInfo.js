@@ -48,14 +48,13 @@ async function main() {
     
     // Verificar conexión
     await provider.getBlockNumber();
-    
-    // ABI completo para ERC20
+    // Solo necesitas incluir en el ABI las funciones que vas a utilizar.
+    // En este caso, basta con las funciones name, symbol, decimals, totalSupply.
     const erc20Abi = [
       "function name() view returns (string)",
       "function symbol() view returns (string)", 
       "function decimals() view returns (uint8)",
-      "function totalSupply() view returns (uint256)",
-      "function balanceOf(address owner) view returns (uint256)"
+      "function totalSupply() view returns (uint256)"
     ];
     
     const contract = new ethers.Contract(contractAddress, erc20Abi, provider);

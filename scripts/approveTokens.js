@@ -4,7 +4,7 @@ async function main() {
   const [deployer] = await hre.ethers.getSigners();
   
   // Dirección del contrato GuaraniToken desplegado
-  const tokenAddress = "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0";
+  const tokenAddress = "0x5FbDB2315678afecb367f032d93F642f64180aa3";
   
   // Dirección del spender (a quien se le aprueba gastar los tokens)
   const spenderAddress = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"; // Dirección especificada
