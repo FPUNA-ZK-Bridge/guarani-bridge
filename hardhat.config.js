@@ -1,6 +1,18 @@
 import "@nomicfoundation/hardhat-toolbox";
 import "dotenv/config";
 
+const {
+  EPHEMERY_RPC_URL,
+  EPHEMERY_PRIVATE_KEY,
+  EPHEMERY_CHAIN_ID,
+  BLOCKDAG_RPC_URL,
+  BLOCKDAG_CHAIN_ID,
+  BLOCKDAG_PRIVATE_KEY,
+  SEPOLIA_RPC_URL,
+  SEPOLIA_CHAIN_ID,
+  SEPOLIA_PRIVATE_KEY,
+} = process.env;
+
 export default {
   solidity: "0.8.24",
   networks: {
@@ -18,6 +30,25 @@ export default {
     localN2: {
       url: "http://127.0.0.1:9545",
       chainId: 1338,
+    },
+    ephemery: {
+      url: EPHEMERY_RPC_URL ?? "http://127.0.0.1:8545",
+      // si querés setear chainId por env (mejor opcional)
+      chainId: EPHEMERY_CHAIN_ID ? Number(EPHEMERY_CHAIN_ID) : undefined,
+      accounts: EPHEMERY_PRIVATE_KEY ? [EPHEMERY_PRIVATE_KEY] : undefined,
+      // timeout: 600000,
+    },
+    sepolia: {
+      url: SEPOLIA_RPC_URL ?? "http://127.0.0.1:8545",
+      chainId: SEPOLIA_CHAIN_ID ? Number(SEPOLIA_CHAIN_ID) : undefined,
+      accounts: SEPOLIA_PRIVATE_KEY ? [SEPOLIA_PRIVATE_KEY] : undefined,
+    },
+    blockdag: {
+      url: BLOCKDAG_RPC_URL ?? "http://127.0.0.1:8545",
+      // si querés setear chainId por env (mejor opcional)
+      chainId: BLOCKDAG_CHAIN_ID ? Number(BLOCKDAG_CHAIN_ID) : undefined,
+      accounts: BLOCKDAG_PRIVATE_KEY ? [BLOCKDAG_PRIVATE_KEY] : undefined,
+      // timeout: 600000,
     },
     // Docker networks
     dockerN1: {

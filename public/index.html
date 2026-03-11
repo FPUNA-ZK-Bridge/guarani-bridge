@@ -1,1129 +1,488 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="scroll-smooth">
 <head>
   <meta charset="utf-8" />
-  <title>GuaraniToken • Local Bridge Demo</title>
+  <title>GuaraniToken Bridge</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
 
-  <!-- Ethers v6 (UMD)  → no CORS issues -->
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: { 50:'#f0f5ff', 100:'#e0eaff', 200:'#c2d5ff', 400:'#6d9eff', 500:'#4f7df9', 600:'#3b5fe0', 700:'#2d46b9', 800:'#1e2f7a', 900:'#101b4d' },
+            l1: { light:'#dbeafe', DEFAULT:'#3b82f6', dark:'#1e40af' },
+            l2: { light:'#d1fae5', DEFAULT:'#10b981', dark:'#065f46' },
+          },
+          fontFamily: { sans: ['Inter', 'system-ui', 'sans-serif'] },
+          animation: { 'pulse-slow': 'pulse 3s cubic-bezier(0.4,0,0.6,1) infinite' },
+        }
+      }
+    }
+  </script>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Ethers v6 -->
   <script src="https://unpkg.com/ethers@6.11.1/dist/ethers.umd.min.js"></script>
 
-  <link rel="preconnect" href="https://fonts.gstatic.com" />
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500&display=swap" rel="stylesheet" />
-
   <style>
-    :root {
-      --primary: #6200ee;
-      --primary-dark: #3700b3;
-      --bg: #fafafa;
-      --surface: #fff;
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0; font-family: Roboto, sans-serif; background: var(--bg); color:#222;
-      display:flex; flex-direction:column; align-items:center;
-    }
-    h1 { font-size:1.7rem; font-weight:400; margin:1.3rem 0 .5rem; color:var(--primary); }
-    .card {
-      width:100%; max-width:420px; background:var(--surface); border-radius:8px;
-      box-shadow:0 2px 8px rgba(0,0,0,.08); padding:24px; margin:1rem;
-    }
-    label { display:block; font-size:.85rem; margin-bottom:4px; opacity:.8; }
-    input {
-      width:100%; padding:10px 14px; border:1px solid #ccc; border-radius:4px;
-      font-size:.95rem; margin-bottom:16px; transition:border-color .2s;
-    }
-    input:focus { outline:none; border-color:var(--primary); }
-    button {
-      display:block; width:100%; background:var(--primary); color:#fff;
-      border:none; border-radius:4px; padding:12px; font-size:.9rem;letter-spacing:.5px;
-      cursor:pointer; transition:background .2s,box-shadow .2s;
-    }
-    button:hover { background:var(--primary-dark); box-shadow:0 4px 10px rgba(0,0,0,.18); }
-    pre { background:#111; color:#0f0; border-radius:4px; padding:12px; height:160px; overflow:auto; white-space:pre-wrap; font-family:monospace; font-size:.77rem; margin-top:20px; }
-    
-    /* Estilos para las tablas de monitoreo */
-    .monitor-section { margin-top: 2rem; }
-    .monitor-tables { display: flex; gap: 2rem; flex-wrap: wrap; justify-content: center; }
-    .table-container { flex: 1; min-width: 600px; max-width: 800px; }
-    .table-title { text-align: center; font-size: 1.1rem; font-weight: 500; color: var(--primary); margin-bottom: 0.5rem; }
-    .balance-table { width: 100%; border-collapse: collapse; background: var(--surface); border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.08); table-layout: fixed; }
-    .balance-table th, .balance-table td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #eee; word-wrap: break-word; }
-    .balance-table th:first-child, .balance-table td:first-child { width: 60%; }
-    .balance-table th:nth-child(2), .balance-table td:nth-child(2) { width: 20%; }
-    .balance-table th:nth-child(3), .balance-table td:nth-child(3) { width: 20%; }
-    .balance-table th { background: #f5f5f5; font-weight: 500; font-size: 0.85rem; }
-    .balance-table td { font-size: 0.8rem; }
-    .balance-table tr:hover { background: #f9f9f9; }
-    .address { color: #666; }
-    .balance { font-weight: bold; color: var(--primary); }
-    .contract-info { background: var(--surface); border-radius: 8px; padding: 1rem; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
-    .contract-info h3 { margin: 0 0 0.5rem; color: var(--primary); font-size: 1rem; }
-    .contract-address { font-family: monospace; font-size: 0.85rem; color: #666; word-break: break-all; }
-    .refresh-btn { background: #28a745; padding: 6px 12px; border-radius: 4px; border: none; color: white; font-size: 0.8rem; cursor: pointer; margin-bottom: 1rem; }
-    .refresh-btn:hover { background: #218838; }
+    body { font-family: 'Inter', system-ui, sans-serif; }
+    .bridge-arrow { animation: floatArrow 2s ease-in-out infinite; }
+    @keyframes floatArrow { 0%,100%{ transform:translateX(0); } 50%{ transform:translateX(8px); } }
+    .log-box::-webkit-scrollbar { width:6px; }
+    .log-box::-webkit-scrollbar-thumb { background:#4f7df9; border-radius:3px; }
+    .glass { backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
   </style>
 </head>
-<body>
-  <h1>GuaraniToken Bridge (Local)</h1>
-  <div class="card">
-    <label for="dest">Destino (L2 address)</label>
-    <input id="dest" placeholder="0x…" />
 
-    <label for="amt">Monto (GUA)</label>
-    <input id="amt" type="number" value="10" step="0.0001" />
+<body class="min-h-screen bg-gradient-to-br from-brand-900 via-brand-800 to-brand-900 text-white">
 
-    <button id="btn-bridge">BRIDGE →</button>
-
-    <pre id="log"></pre>
-  </div>
-
-  <!-- Sección de Monitoreo de Balances -->
-  <div class="monitor-section">
-    <h2 style="text-align: center; color: var(--primary); margin-bottom: 1rem;">🔍 Monitor de Balances</h2>
-    
-    <!-- Información de Contratos -->
-    <div class="monitor-tables">
-      <div class="table-container">
-        <div class="contract-info">
-          <h3>📋 Contratos L1 (Hardhat - 31337)</h3>
-          <div>Token: <span class="contract-address" id="l1-token-addr">0x5FbDB2315678afecb367f032d93F642f64180aa3</span></div>
-          <div>Sender: <span class="contract-address" id="l1-sender-addr">0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512</span></div>
+  <!-- ───── Header ───── -->
+  <header class="w-full border-b border-white/10 glass bg-white/5">
+    <div class="max-w-6xl mx-auto flex items-center justify-between px-6 py-4">
+      <div class="flex items-center gap-3">
+        <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-brand-500 to-l2 flex items-center justify-center text-lg font-bold">G</div>
+        <div>
+          <h1 id="page-title" class="text-lg font-semibold leading-tight">GuaraniToken Bridge</h1>
+          <p class="text-xs text-white/50" id="subtitle">Connecting chains securely</p>
         </div>
       </div>
-      <div class="table-container">
-        <div class="contract-info">
-          <h3>📋 Contratos L2 (Anvil - 1338)</h3>
-          <div>Token: <span class="contract-address" id="l2-token-addr">0x8464135c8F25Da09e49BC8782676a84730C318bC</span></div>
-          <div>Receiver: <span class="contract-address" id="l2-receiver-addr">0x71C95911E9a5D330f4D621842EC243EE1343292e</span></div>
+      <div class="flex items-center gap-2">
+        <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-white/10 border border-white/10">
+          <span class="w-2 h-2 rounded-full bg-green-400 animate-pulse"></span>
+          <span id="header-status">Initializing</span>
+        </span>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+
+    <!-- ───── Bridge Card ───── -->
+    <section class="max-w-lg mx-auto">
+      <div class="rounded-2xl bg-white/[0.07] border border-white/10 glass overflow-hidden">
+        <!-- Card header -->
+        <div class="px-6 pt-6 pb-4 border-b border-white/10">
+          <div class="flex items-center gap-3">
+            <svg class="w-5 h-5 text-brand-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+            <h2 class="text-base font-semibold">Bridge Tokens</h2>
+          </div>
+          <p class="mt-1 text-xs text-white/40">Lock GUA on N1 and receive on N2</p>
+        </div>
+
+        <!-- Chain indicators -->
+        <div class="flex items-center justify-center gap-4 py-4 px-6">
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-l1/20 border border-l1/30 text-sm font-medium text-l1-light">
+            <span class="w-2 h-2 rounded-full bg-l1"></span>
+            N1
+          </div>
+          <div class="bridge-arrow text-white/40">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
+          </div>
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-l2/20 border border-l2/30 text-sm font-medium text-l2-light">
+            <span class="w-2 h-2 rounded-full bg-l2"></span>
+            N2
+          </div>
+        </div>
+
+        <!-- Form -->
+        <div class="px-6 pb-6 space-y-4">
+          <div>
+            <label for="dest" class="block text-xs font-medium text-white/60 mb-1.5">Destination (N2 address)</label>
+            <input id="dest" placeholder="0x…" class="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500/50 transition" />
+          </div>
+          <div>
+            <label for="amt" class="block text-xs font-medium text-white/60 mb-1.5">Amount (GUA)</label>
+            <input id="amt" type="number" value="10" step="0.0001" class="w-full px-4 py-2.5 rounded-lg bg-white/5 border border-white/10 text-sm text-white placeholder-white/30 focus:outline-none focus:ring-2 focus:ring-brand-500/50 focus:border-brand-500/50 transition" />
+          </div>
+          <button id="btn-bridge" class="w-full py-3 rounded-lg bg-gradient-to-r from-brand-500 to-brand-600 hover:from-brand-600 hover:to-brand-700 text-sm font-semibold tracking-wide transition-all duration-200 shadow-lg shadow-brand-500/25 hover:shadow-brand-500/40 active:scale-[0.98]">
+            BRIDGE &rarr;
+          </button>
+
+          <!-- Log console -->
+          <div class="mt-4">
+            <div class="flex items-center gap-2 mb-1.5">
+              <svg class="w-3.5 h-3.5 text-white/40" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+              <span class="text-xs text-white/40 font-medium">Console</span>
+            </div>
+            <pre id="log" class="log-box h-36 overflow-auto rounded-lg bg-black/40 border border-white/5 p-3 text-xs font-mono text-green-400 whitespace-pre-wrap"></pre>
+          </div>
         </div>
       </div>
-    </div>
+    </section>
 
-    <!-- Tablas de Balances -->
-    <div class="monitor-tables">
-      <div class="table-container">
-        <div class="table-title">🌐 L1 - Hardhat (Chain ID: 31337)</div>
-        <button class="refresh-btn" onclick="updateAllBalances()">🔄 Actualizar</button>
-        <table class="balance-table">
-          <thead>
-            <tr>
-              <th>Dirección de Cuenta</th>
-              <th>ETH</th>
-              <th>Balance GUA</th>
-            </tr>
-          </thead>
-          <tbody id="l1-balances">
-            <tr><td colspan="3">Cargando...</td></tr>
-          </tbody>
-        </table>
+    <!-- ───── Contract Info ───── -->
+    <section>
+      <h2 class="text-center text-sm font-semibold text-white/50 uppercase tracking-wider mb-4">Deployed Contracts</h2>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!-- L1 -->
+        <div class="rounded-xl bg-white/[0.05] border border-l1/20 p-5">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="w-2.5 h-2.5 rounded-full bg-l1"></span>
+            <h3 id="l1-contracts-title" class="text-sm font-semibold text-l1-light">N1 Contracts</h3>
+          </div>
+          <div class="space-y-2 text-xs">
+            <div class="flex items-start gap-2">
+              <span class="text-white/40 shrink-0 w-14">Token:</span>
+              <span class="font-mono text-white/70 break-all" id="l1-token-addr">&mdash;</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="text-white/40 shrink-0 w-14">Sender:</span>
+              <span class="font-mono text-white/70 break-all" id="l1-sender-addr">&mdash;</span>
+            </div>
+          </div>
+        </div>
+        <!-- L2 -->
+        <div class="rounded-xl bg-white/[0.05] border border-l2/20 p-5">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="w-2.5 h-2.5 rounded-full bg-l2"></span>
+            <h3 id="l2-contracts-title" class="text-sm font-semibold text-l2-light">N2 Contracts</h3>
+          </div>
+          <div class="space-y-2 text-xs">
+            <div class="flex items-start gap-2">
+              <span class="text-white/40 shrink-0 w-14">Token:</span>
+              <span class="font-mono text-white/70 break-all" id="l2-token-addr">&mdash;</span>
+            </div>
+            <div class="flex items-start gap-2">
+              <span class="text-white/40 shrink-0 w-14">Receiver:</span>
+              <span class="font-mono text-white/70 break-all" id="l2-receiver-addr">&mdash;</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ───── Balance Monitor ───── -->
+    <section>
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-sm font-semibold text-white/50 uppercase tracking-wider">Balance Monitor</h2>
+        <button class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-xs font-medium transition" onclick="updateAllBalances()">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          Refresh
+        </button>
       </div>
 
-      <div class="table-container">
-        <div class="table-title">⛓️ L2 - Anvil (Chain ID: 1338)</div>
-        <button class="refresh-btn" onclick="updateAllBalances()">🔄 Actualizar</button>
-        <table class="balance-table">
-          <thead>
-            <tr>
-              <th>Dirección de Cuenta</th>
-              <th>ETH</th>
-              <th>Balance GUA</th>
-            </tr>
-          </thead>
-          <tbody id="l2-balances">
-            <tr><td colspan="3">Cargando...</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <!-- L1 Table -->
+        <div class="rounded-xl bg-white/[0.05] border border-l1/20 overflow-hidden">
+          <div class="px-5 py-3 border-b border-white/5 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-l1"></span>
+            <span id="l1-table-title" class="text-sm font-semibold text-l1-light">N1</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="text-white/40 border-b border-white/5">
+                  <th class="text-left px-5 py-2.5 font-medium">Address</th>
+                  <th class="text-right px-5 py-2.5 font-medium w-28">Native</th>
+                  <th class="text-right px-5 py-2.5 font-medium w-28">GUA</th>
+                </tr>
+              </thead>
+              <tbody id="l1-balances">
+                <tr><td colspan="3" class="px-5 py-4 text-center text-white/30">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
 
+        <!-- L2 Table -->
+        <div class="rounded-xl bg-white/[0.05] border border-l2/20 overflow-hidden">
+          <div class="px-5 py-3 border-b border-white/5 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-l2"></span>
+            <span id="l2-table-title" class="text-sm font-semibold text-l2-light">N2</span>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-xs">
+              <thead>
+                <tr class="text-white/40 border-b border-white/5">
+                  <th class="text-left px-5 py-2.5 font-medium">Address</th>
+                  <th class="text-right px-5 py-2.5 font-medium w-28">Native</th>
+                  <th class="text-right px-5 py-2.5 font-medium w-28">GUA</th>
+                </tr>
+              </thead>
+              <tbody id="l2-balances">
+                <tr><td colspan="3" class="px-5 py-4 text-center text-white/30">Loading...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ───── Footer ───── -->
+  <footer class="border-t border-white/5 mt-12">
+    <div class="max-w-6xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-white/30">
+      <span>GuaraniToken Bridge &mdash; Lock &amp; Mint</span>
+      <span>Powered by Ethers.js v6 &middot; Tailwind CSS</span>
+    </div>
+  </footer>
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- JS Logic (preserves all existing behaviour)                            -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
 <script>
 (async () => {
-  // ───────── Config   (rellena tras tu deploy) ──────────
-  const CHAIN_L1 = "0x7a69";   // 31337
-  const SENDER_L1 = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
-  // ──────────────────────────────────────────────────────
 
-  if (!window.ethereum) return alert("Instala MetaMask");
+
+
+  /* ─── bridge-config.json ─── */
+  const cfg = await fetch("./bridge-config.json").then(r => r.json());
+
+  const setText = (id, value) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value ?? "\u2014";
+  };
+  const fmtChain = (c) => c?.chainIdHex ?? (c?.chainId ? ("0x" + Number(c.chainId).toString(16)) : null);
+
+  setText("page-title", `GuaraniToken Bridge (${cfg.mode ?? "unknown"})`);
+  setText("subtitle", `${cfg.mode ?? "network"} \u00b7 N1 chain ${cfg?.l1?.chainId ?? "?"} \u2192 N2 chain ${cfg?.l2?.chainId ?? "?"}`);
+  setText("l1-contracts-title", `N1 (${cfg.l1.network ?? "network"} \u00b7 ${cfg?.l1?.chainId ?? "?"})`);
+  setText("l2-contracts-title", `N2 (${cfg.l2.network ?? "network"} \u00b7 ${cfg?.l2?.chainId ?? "?"})`);
+  setText("l1-token-addr", cfg?.l1?.token);
+  setText("l1-sender-addr", cfg?.l1?.sender);
+  setText("l2-token-addr", cfg?.l2?.token);
+  setText("l2-receiver-addr", cfg?.l2?.receiver);
+  setText("l1-table-title", `N1 (Chain ${cfg?.l1?.chainId ?? "?"})`);
+  setText("l2-table-title", `N2 (Chain ${cfg?.l2?.chainId ?? "?"})`);
+
+  const CHAIN_L1 = fmtChain(cfg.l1);
+  const SENDER_L1 = cfg.l1.sender;
+  const TOKEN_L1 = cfg.l1.token;
+  const CONTRACT_L1 = cfg.l1.sender;
+  const TOKEN_L2 = cfg.l2.token;
+  const CONTRACT_L2 = cfg.l2.receiver;
+
+  if (!window.ethereum) return alert("Install MetaMask to use the bridge");
 
   const log = (m) => {
     const el = document.getElementById("log");
     el.textContent += m + "\n"; el.scrollTop = el.scrollHeight;
   };
 
-  /* auto-connect with error handling */
+  /* ─── connect ─── */
   let provider, signer;
   try {
-    // Check if already connected first
     const accounts = await ethereum.request({ method: "eth_accounts" });
-    
     if (accounts.length === 0) {
-      // Only request accounts if not already connected
       await ethereum.request({ method: "eth_requestAccounts" });
     }
-    
     provider = new ethers.BrowserProvider(ethereum);
     signer = await provider.getSigner();
     const { chainId } = await provider.getNetwork();
     log(`Connected ${signer.address}  (chainId ${chainId})`);
+    setText("header-status", `${signer.address.slice(0,6)}...${signer.address.slice(-4)}`);
   } catch (error) {
     if (error.code === -32002) {
-      log("⚠️ MetaMask request already pending. Please check MetaMask and try refreshing the page.");
-      console.error("MetaMask permission request pending:", error);
-      return;
-    } else {
-      log(`❌ Connection error: ${error.message}`);
-      console.error("Connection error:", error);
+      log("\u26a0\ufe0f MetaMask request already pending. Check MetaMask and refresh.");
       return;
     }
+    log(`\u274c Connection error: ${error.message}`);
+    return;
   }
 
-    /* switch helper */
+  /* ─── switch chain ─── */
   const switchTo = async (hexId) => {
-    const want = BigInt(parseInt(hexId, 16));     // 31337n
-    const now  = (await provider.getNetwork()).chainId; // BigInt
+    const want = BigInt(parseInt(hexId, 16));
+    const now  = (await provider.getNetwork()).chainId;
     if (now !== want) {
-      try { 
-        await ethereum.request({ method:"wallet_switchEthereumChain", params:[{ chainId:hexId }] }); 
-      } catch (e) { 
-        if (e.code === -32002) {
-          log("⚠️ MetaMask request already pending. Please check MetaMask.");
-        } else {
-          log("⚠️ switch chain rejected"); 
-        }
-        throw e; 
+      try {
+        await ethereum.request({ method:"wallet_switchEthereumChain", params:[{ chainId:hexId }] });
+      } catch (e) {
+        if (e.code === -32002) log("\u26a0\ufe0f MetaMask request already pending.");
+        else log("\u26a0\ufe0f Switch chain rejected");
+        throw e;
       }
     }
   };
 
-  const abiToken  = [
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "initialSupply",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "constructor"
-    },
-    {
-      "inputs": [],
-      "name": "AccessControlBadConfirmation",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
-        },
-        {
-          "internalType": "bytes32",
-          "name": "neededRole",
-          "type": "bytes32"
-        }
-      ],
-      "name": "AccessControlUnauthorizedAccount",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "spender",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "allowance",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "needed",
-          "type": "uint256"
-        }
-      ],
-      "name": "ERC20InsufficientAllowance",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "sender",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "balance",
-          "type": "uint256"
-        },
-        {
-          "internalType": "uint256",
-          "name": "needed",
-          "type": "uint256"
-        }
-      ],
-      "name": "ERC20InsufficientBalance",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "approver",
-          "type": "address"
-        }
-      ],
-      "name": "ERC20InvalidApprover",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "receiver",
-          "type": "address"
-        }
-      ],
-      "name": "ERC20InvalidReceiver",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "sender",
-          "type": "address"
-        }
-      ],
-      "name": "ERC20InvalidSender",
-      "type": "error"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "spender",
-          "type": "address"
-        }
-      ],
-      "name": "ERC20InvalidSpender",
-      "type": "error"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "owner",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "spender",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "value",
-          "type": "uint256"
-        }
-      ],
-      "name": "Approval",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "bytes32",
-          "name": "role",
-          "type": "bytes32"
-        },
-        {
-          "indexed": true,
-          "internalType": "bytes32",
-          "name": "previousAdminRole",
-          "type": "bytes32"
-        },
-        {
-          "indexed": true,
-          "internalType": "bytes32",
-          "name": "newAdminRole",
-          "type": "bytes32"
-        }
-      ],
-      "name": "RoleAdminChanged",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "bytes32",
-          "name": "role",
-          "type": "bytes32"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "sender",
-          "type": "address"
-        }
-      ],
-      "name": "RoleGranted",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "bytes32",
-          "name": "role",
-          "type": "bytes32"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "sender",
-          "type": "address"
-        }
-      ],
-      "name": "RoleRevoked",
-      "type": "event"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "from",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "to",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "value",
-          "type": "uint256"
-        }
-      ],
-      "name": "Transfer",
-      "type": "event"
-    },
-    {
-      "inputs": [],
-      "name": "DEFAULT_ADMIN_ROLE",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "MINTER_ROLE",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "owner",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "spender",
-          "type": "address"
-        }
-      ],
-      "name": "allowance",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "spender",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "value",
-          "type": "uint256"
-        }
-      ],
-      "name": "approve",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
-        }
-      ],
-      "name": "balanceOf",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "decimals",
-      "outputs": [
-        {
-          "internalType": "uint8",
-          "name": "",
-          "type": "uint8"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "bytes32",
-          "name": "role",
-          "type": "bytes32"
-        }
-      ],
-      "name": "getRoleAdmin",
-      "outputs": [
-        {
-          "internalType": "bytes32",
-          "name": "",
-          "type": "bytes32"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "bytes32",
-          "name": "role",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
-        }
-      ],
-      "name": "grantRole",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "bytes32",
-          "name": "role",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
-        }
-      ],
-      "name": "hasRole",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "to",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "mint",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "name",
-      "outputs": [
-        {
-          "internalType": "string",
-          "name": "",
-          "type": "string"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "bytes32",
-          "name": "role",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "address",
-          "name": "callerConfirmation",
-          "type": "address"
-        }
-      ],
-      "name": "renounceRole",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "bytes32",
-          "name": "role",
-          "type": "bytes32"
-        },
-        {
-          "internalType": "address",
-          "name": "account",
-          "type": "address"
-        }
-      ],
-      "name": "revokeRole",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "bytes4",
-          "name": "interfaceId",
-          "type": "bytes4"
-        }
-      ],
-      "name": "supportsInterface",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "symbol",
-      "outputs": [
-        {
-          "internalType": "string",
-          "name": "",
-          "type": "string"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "totalSupply",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "to",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "value",
-          "type": "uint256"
-        }
-      ],
-      "name": "transfer",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "from",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "to",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "value",
-          "type": "uint256"
-        }
-      ],
-      "name": "transferFrom",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    }
-  ];
-  const abiSender = [
-    {
-      "inputs": [
-        {
-          "internalType": "contract GuaraniToken",
-          "name": "_token",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "constructor"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "id",
-          "type": "uint256"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "from",
-          "type": "address"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "to",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "Locked",
-      "type": "event"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "address",
-          "name": "recipientL2",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "lock",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "lockedBalance",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "nonce",
-      "outputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "token",
-      "outputs": [
-        {
-          "internalType": "contract GuaraniToken",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    }
+  /* ─── ABIs ─── */
+  const abiToken = [
+    "constructor(uint256 initialSupply)",
+    "error AccessControlBadConfirmation()",
+    "error AccessControlUnauthorizedAccount(address account, bytes32 neededRole)",
+    "error ERC20InsufficientAllowance(address spender, uint256 allowance, uint256 needed)",
+    "error ERC20InsufficientBalance(address sender, uint256 balance, uint256 needed)",
+    "error ERC20InvalidApprover(address approver)",
+    "error ERC20InvalidReceiver(address receiver)",
+    "error ERC20InvalidSender(address sender)",
+    "error ERC20InvalidSpender(address spender)",
+    "event Approval(address indexed owner, address indexed spender, uint256 value)",
+    "event RoleAdminChanged(bytes32 indexed role, bytes32 indexed previousAdminRole, bytes32 indexed newAdminRole)",
+    "event RoleGranted(bytes32 indexed role, address indexed account, address indexed sender)",
+    "event RoleRevoked(bytes32 indexed role, address indexed account, address indexed sender)",
+    "event Transfer(address indexed from, address indexed to, uint256 value)",
+    "function DEFAULT_ADMIN_ROLE() view returns (bytes32)",
+    "function MINTER_ROLE() view returns (bytes32)",
+    "function allowance(address owner, address spender) view returns (uint256)",
+    "function approve(address spender, uint256 value) returns (bool)",
+    "function balanceOf(address account) view returns (uint256)",
+    "function decimals() view returns (uint8)",
+    "function getRoleAdmin(bytes32 role) view returns (bytes32)",
+    "function grantRole(bytes32 role, address account)",
+    "function hasRole(bytes32 role, address account) view returns (bool)",
+    "function mint(address to, uint256 amount)",
+    "function name() view returns (string)",
+    "function renounceRole(bytes32 role, address callerConfirmation)",
+    "function revokeRole(bytes32 role, address account)",
+    "function supportsInterface(bytes4 interfaceId) view returns (bool)",
+    "function symbol() view returns (string)",
+    "function totalSupply() view returns (uint256)",
+    "function transfer(address to, uint256 value) returns (bool)",
+    "function transferFrom(address from, address to, uint256 value) returns (bool)",
   ];
 
-  const token  = new ethers.Contract("0x5FbDB2315678afecb367f032d93F642f64180aa3" , abiToken , signer);
+  const abiSender = [
+    "constructor(address _token)",
+    "event Locked(uint256 indexed id, address indexed from, address indexed to, uint256 amount)",
+    "function lock(address recipientL2, uint256 amount)",
+    "function lockedBalance() view returns (uint256)",
+    "function nonce() view returns (uint256)",
+    "function token() view returns (address)",
+  ];
+
+  const abiMinted = [
+    "constructor(address _token, address _relayer)",
+    "event Minted(uint256 indexed id, address indexed to, uint256 amount)",
+    "function mintRemote(uint256 id, address to, uint256 amount)",
+    "function processed(uint256) view returns (bool)",
+    "function relayer() view returns (address)",
+    "function token() view returns (address)",
+  ];
+
+  const token  = new ethers.Contract(TOKEN_L1, abiToken, signer);
   const sender = new ethers.Contract(SENDER_L1, abiSender, signer);
 
+  /* ─── Bridge action ─── */
   document.getElementById("btn-bridge").onclick = async () => {
-    debugger;
     try {
-      console.log('escuchando');
       await switchTo(CHAIN_L1);
 
       const dest   = document.getElementById("dest").value.trim();
       const amount = ethers.parseUnits(document.getElementById("amt").value || "0", 18);
-      if (!ethers.isAddress(dest)) return alert("Dirección destino inválida");
+      if (!ethers.isAddress(dest)) return alert("Invalid destination address");
 
-      /* approve if needed */
       const allow = await token.allowance(signer.address, SENDER_L1);
       if (allow < amount) {
-        log("approve…");
+        log("approve\u2026");
         const tx = await token.approve(SENDER_L1, amount);
-        await tx.wait(); log("approve ok");
+        await tx.wait(2); log("approve ok");
       }
 
-      /* lock */
-      log("lock…");
+      // const proofOk = await verificarFinal();
+      // if (!proofOk) {
+      //   throw new Error("Proof inválido");
+      // }
+      // console.log("✅ Proof verificado OK");
+
+      log("lock\u2026");
       const tx2 = await sender.lock(dest, amount);
       await tx2.wait();
       const idBN   = await sender.nonce();
-      const lockId = idBN - 1n; // BigInt math OK
-      log(`✅ Locked id ${lockId.toString()}, amount ${ethers.formatUnits(amount,18)} GUA`);
-      log("🔄 Espera que el relayer acuñe en L2…");
+      const lockId = idBN - 1n;
+      log(`\u2705 Locked id ${lockId.toString()}, amount ${ethers.formatUnits(amount,18)} GUA`);
+      log("\ud83d\udd04 Waiting for relayer to mint on N2\u2026");
 
     } catch (e) {
       console.error("Bridge error:", e);
-      
-      let errorMsg = "Error desconocido";
-      
-      if (e.message?.includes("nonce")) {
-        errorMsg = "Error de nonce. Por favor intenta nuevamente.";
-      } else if (e.message?.includes("insufficient funds")) {
-        errorMsg = "Fondos insuficientes";
-      } else if (e.message?.includes("allowance")) {
-        errorMsg = "Error de allowance";
-      } else if (e.code === "ACTION_REJECTED") {
-        errorMsg = "Transacción rechazada por el usuario";
-      } else if (e.message?.includes("Internal JSON-RPC error")) {
-        errorMsg = "Error interno del nodo. Verifica que tengas tokens suficientes.";
-      } else {
-        errorMsg = e?.info?.error?.message || e.shortMessage || e.message;
-      }
-      
-      log("❌ " + errorMsg);
+      let errorMsg = "Unknown error";
+      if (e.message?.includes("nonce")) errorMsg = "Nonce error. Please try again.";
+      else if (e.message?.includes("insufficient funds")) errorMsg = "Insufficient funds";
+      else if (e.message?.includes("allowance")) errorMsg = "Allowance error";
+      else if (e.code === "ACTION_REJECTED") errorMsg = "Transaction rejected by user";
+      else if (e.message?.includes("Internal JSON-RPC error")) errorMsg = "Node error. Check token balance.";
+      else errorMsg = e?.info?.error?.message || e.shortMessage || e.message;
+      log("\u274c " + errorMsg);
     }
   };
-  // Escuchar el evento Minted del contrato en L2
-  // ABI del evento Minted (ajusta los parámetros según tu contrato)
-  const abiMinted = [
-    {
-      "inputs": [
-        {
-          "internalType": "contract GuaraniToken",
-          "name": "_token",
-          "type": "address"
-        },
-        {
-          "internalType": "address",
-          "name": "_relayer",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "nonpayable",
-      "type": "constructor"
-    },
-    {
-      "anonymous": false,
-      "inputs": [
-        {
-          "indexed": true,
-          "internalType": "uint256",
-          "name": "id",
-          "type": "uint256"
-        },
-        {
-          "indexed": true,
-          "internalType": "address",
-          "name": "to",
-          "type": "address"
-        },
-        {
-          "indexed": false,
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "Minted",
-      "type": "event"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "id",
-          "type": "uint256"
-        },
-        {
-          "internalType": "address",
-          "name": "to",
-          "type": "address"
-        },
-        {
-          "internalType": "uint256",
-          "name": "amount",
-          "type": "uint256"
-        }
-      ],
-      "name": "mintRemote",
-      "outputs": [],
-      "stateMutability": "nonpayable",
-      "type": "function"
-    },
-    {
-      "inputs": [
-        {
-          "internalType": "uint256",
-          "name": "",
-          "type": "uint256"
-        }
-      ],
-      "name": "processed",
-      "outputs": [
-        {
-          "internalType": "bool",
-          "name": "",
-          "type": "bool"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "relayer",
-      "outputs": [
-        {
-          "internalType": "address",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    },
-    {
-      "inputs": [],
-      "name": "token",
-      "outputs": [
-        {
-          "internalType": "contract GuaraniToken",
-          "name": "",
-          "type": "address"
-        }
-      ],
-      "stateMutability": "view",
-      "type": "function"
-    }
-  ];
-  // Contract addresses and providers setup
-  const TOKEN_L1 = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // Token contract L1
-  const CONTRACT_L1 = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"; // Sender contract address
-  const TOKEN_L2 = "0x8464135c8F25Da09e49BC8782676a84730C318bC"; // Token contract L2  
-  const CONTRACT_L2 = "0x71C95911E9a5D330f4D621842EC243EE1343292e"; // Receiver contract address
 
-  // Note: Browser always connects to localhost (mapped ports from docker-compose)
-  // Docker containers expose ports: hardhat-n1:8545->8545, anvil-n2:9545->9545
-  const providerL1 = new ethers.JsonRpcProvider("http://localhost:8545"); // L1 Hardhat port
-  const providerL2 = new ethers.JsonRpcProvider("http://localhost:9545"); // L2 Anvil port
+  /* ─── RPC normalization for browser ─── */
+  const normalizeRpcForBrowser = (rpc) => {
+    if (!rpc) return null;
+    try {
+      const u = new URL(rpc);
+      const loopbacks = new Set(["127.0.0.1", "localhost", "0.0.0.0"]);
+      if (u.hostname === "hardhat-n1") {
+        u.hostname = window.location.hostname;
+        if (u.port === "8545") u.port = "8546";
+      } else if (u.hostname === "anvil-n2") {
+        u.hostname = window.location.hostname;
+      } else if (loopbacks.has(u.hostname) && window.location.hostname && !loopbacks.has(window.location.hostname)) {
+        u.hostname = window.location.hostname;
+      }
+      return u.toString().replace(/\/$/, "");
+    } catch { return rpc; }
+  };
 
-  // Create token contracts for balance queries
-  const tokenL1 = new ethers.Contract(TOKEN_L1, abiToken, providerL1);
-  const tokenL2 = new ethers.Contract(TOKEN_L2, abiToken, providerL2);
-  
-  // Create bridge contracts for events  
-  const contractL1 = new ethers.Contract(CONTRACT_L1, abiSender, providerL1);
-  const contractL2 = new ethers.Contract(CONTRACT_L2, abiMinted, providerL2);
+  const rpcL1 = normalizeRpcForBrowser(cfg?.l1?.rpc);
+  const rpcL2 = normalizeRpcForBrowser(cfg?.l2?.rpc);
 
-  contractL2.on("Minted", (to, amount, lockId, event) => {
-    log(`🎉 Minted: to=${to}, amount=${ethers.formatUnits(amount,18)} GUA, lockId=${lockId}`);
-  });
+  const providerL1 = rpcL1 ? new ethers.JsonRpcProvider(rpcL1) : null;
+  const providerL2 = rpcL2 ? new ethers.JsonRpcProvider(rpcL2) : null;
 
-  // Balance Monitoring System
-  const accounts = [
-    "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-    "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", 
-    "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
-    "0x90F79bf6EB2c4f870365E785982E1f101E93b906",
-    "0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65",
-    "0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc",
-    "0x976EA74026E726554dB657fA54763abd0C3a0aa9",
-    "0x14dC79964da2C08b23698B3D3cc7Ca32193d9955",
-    "0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f",
-    "0xa0Ee7A142d267C1f36714E4a8F75612F20a79720"
-  ];
+  const tokenL1 = (providerL1 && TOKEN_L1) ? new ethers.Contract(TOKEN_L1, abiToken, providerL1) : null;
+  const tokenL2 = (providerL2 && TOKEN_L2) ? new ethers.Contract(TOKEN_L2, abiToken, providerL2) : null;
 
-  async function updateBalanceTable(networkId, provider, tokenContract, accountsList) {
+  const contractL2 = (providerL2 && CONTRACT_L2) ? new ethers.Contract(CONTRACT_L2, abiMinted, providerL2) : null;
+
+  if (contractL2) {
+    contractL2.on("Minted", (to, amount, lockId) => {
+      log(`\ud83c\udf89 Minted: to=${to}, amount=${ethers.formatUnits(amount,18)} GUA, lockId=${lockId}`);
+    });
+  } else {
+    log("\u2139\ufe0f N2 listener disabled (cfg.l2.rpc or cfg.l2.receiver is empty).");
+  }
+
+  /* ─── Balance Monitor ─── */
+  const accounts = cfg.monitorAccounts?.length ? cfg.monitorAccounts : [signer.address];
+
+  async function updateBalanceTable(networkId, prov, tokenContract, accountsList) {
     const tableBody = document.getElementById(`${networkId}-balances`);
-    if (!tableBody) {
-      console.error(`Table body not found for ${networkId}-balances`);
+    if (!tableBody) return;
+    tableBody.innerHTML = '';
+
+    if (!prov || !tokenContract) {
+      tableBody.innerHTML = `<tr><td colspan="3" class="px-5 py-4 text-center text-white/30">
+        Incomplete config for ${networkId.toUpperCase()} (missing rpc or addresses in bridge-config.json)
+      </td></tr>`;
       return;
     }
-    
-    tableBody.innerHTML = '';
-    
+
     for (const account of accountsList) {
       try {
-        // Test if we can connect to the provider first
-        await provider.getBlockNumber();
-        
-        // Get ETH balance
-        const ethBalance = await provider.getBalance(account);
-        const ethBalanceFormatted = parseFloat(ethers.formatEther(ethBalance)).toFixed(4);
-        
-        // Get GUA token balance
+        await prov.getBlockNumber();
+        const ethBalance = await prov.getBalance(account);
+        const ethFmt = parseFloat(ethers.formatEther(ethBalance)).toFixed(4);
         const tokenBalance = await tokenContract.balanceOf(account);
-        const guaBalanceFormatted = parseFloat(ethers.formatUnits(tokenBalance, 18)).toFixed(2);
-        
+        const guaFmt = parseFloat(ethers.formatUnits(tokenBalance, 18)).toFixed(2);
+
         const row = document.createElement('tr');
+        row.className = 'border-t border-white/5 hover:bg-white/[0.03] transition';
         row.innerHTML = `
-          <td style="font-family: monospace; font-size: 12px;">${account}</td>
-          <td>${ethBalanceFormatted} ETH</td>
-          <td>${guaBalanceFormatted} GUA</td>
+          <td class="px-5 py-2.5 font-mono text-white/60">${account.slice(0,6)}\u2026${account.slice(-4)}</td>
+          <td class="px-5 py-2.5 text-right text-white/80 font-medium">${ethFmt}</td>
+          <td class="px-5 py-2.5 text-right font-semibold text-brand-400">${guaFmt}</td>
         `;
         tableBody.appendChild(row);
       } catch (error) {
         console.error(`Error fetching balance for ${account}:`, error);
         let errorMsg = "Error";
-        
-        if (error.message.includes("could not decode result data")) {
-          errorMsg = "Contract not found";
-        } else if (error.message.includes("network")) {
-          errorMsg = "Network error";
-        } else if (error.code === 'NETWORK_ERROR') {
-          errorMsg = "RPC error";
-        }
-        
+        if (error.message?.includes("could not decode result data")) errorMsg = "Contract not found";
+        else if (error.message?.includes("network")) errorMsg = "Network error";
+        else if (error.code === 'NETWORK_ERROR') errorMsg = "RPC error";
+
         const row = document.createElement('tr');
+        row.className = 'border-t border-white/5';
         row.innerHTML = `
-          <td style="font-family: monospace; font-size: 12px;">${account}</td>
-          <td>${errorMsg}</td>
-          <td>${errorMsg}</td>
+          <td class="px-5 py-2.5 font-mono text-white/40">${account.slice(0,6)}\u2026${account.slice(-4)}</td>
+          <td class="px-5 py-2.5 text-right text-red-400/70">${errorMsg}</td>
+          <td class="px-5 py-2.5 text-right text-red-400/70">${errorMsg}</td>
         `;
         tableBody.appendChild(row);
       }
@@ -1132,42 +491,18 @@
 
   async function updateAllBalances() {
     try {
-      console.log('Updating L1 balances...');
-      console.log('L1 Provider URL:', providerL1._getConnection().url);
-      console.log('L1 Token Address:', TOKEN_L1);
-      
       await updateBalanceTable('l1', providerL1, tokenL1, accounts);
-      
-      console.log('Updating L2 balances...');
-      console.log('L2 Provider URL:', providerL2._getConnection().url);
-      console.log('L2 Token Address:', TOKEN_L2);
-      
       await updateBalanceTable('l2', providerL2, tokenL2, accounts);
-      
-      // Update contract addresses display
-      const l1ContractElement = document.getElementById('l1-contract-address');
-      const l2ContractElement = document.getElementById('l2-contract-address');
-      if (l1ContractElement) l1ContractElement.textContent = TOKEN_L1;
-      if (l2ContractElement) l2ContractElement.textContent = TOKEN_L2;
-      
-      console.log('Balance update completed');
     } catch (error) {
       console.error('Error updating balances:', error);
-      // Show user-friendly error message
-      if (error.code === -32002) {
-        log("⚠️ MetaMask request pending. Please complete the pending request and try again.");
-      } else {
-        log(`❌ Error updating balances: ${error.message}`);
-      }
+      if (error.code === -32002) log("\u26a0\ufe0f MetaMask request pending.");
+      else log(`\u274c Error updating balances: ${error.message}`);
     }
   }
 
-  // Auto-refresh balances every 10 seconds
   setInterval(updateAllBalances, 10000);
-  
-  // Initial balance load
   updateAllBalances();
-  
+
 })();
 </script>
 </body>
